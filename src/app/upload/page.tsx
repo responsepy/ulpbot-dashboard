@@ -7,11 +7,23 @@ import type { GroupFile, GroupSummary, FilesSummaryResponse, IndexingStatus } fr
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim().replace(/\/+$/, "");
 
 function uploadEndpoints(): string[] {
-  const candidates = ["/upload-data"];
-  if (API_BASE) candidates.push(`${API_BASE}/upload-data`);
-  if (typeof window !== "undefined") {
-    candidates.push(`${window.location.protocol}//${window.location.hostname}:8000/upload-data`);
+  // /api/upload is a Next.js API route that proxies server-side at request time —
+  // works on Vercel even when the backend is HTTP (avoids mixed-content blocking)
+  // and doesn't depend on build-time env vars.
+  const candidates: string[] = ["/api/upload", "/upload-data"];
+
+  // Direct backend — only add when same protocol as current page (avoids mixed content).
+  if (API_BASE && typeof window !== "undefined") {
+    try {
+      const backendProto = new URL(API_BASE).protocol;
+      if (backendProto === window.location.protocol) {
+        candidates.push(`${API_BASE}/upload-data`);
+      }
+    } catch {
+      // ignore malformed URL
+    }
   }
+
   return Array.from(new Set(candidates.filter(Boolean)));
 }
 
