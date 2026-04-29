@@ -176,7 +176,15 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const r = await api.users();
-      setUsers(r.items ?? []);
+      // Deduplicate by platform:user_id in case the same ID is in multiple lists.
+      const seen = new Set<string>();
+      const deduped = (r.items ?? []).filter((u) => {
+        const key = `${u.platform}:${u.user_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setUsers(deduped);
     } catch (e) {
       setMsg({ text: `Load error: ${e instanceof Error ? e.message : "Failed"}`, ok: false });
     } finally {
